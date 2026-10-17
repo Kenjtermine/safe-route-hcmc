@@ -1,0 +1,44 @@
+# --- Secrets / môi trường ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+
+# --- Docker / dữ liệu DB cục bộ ---
+pgdata/
+*.log
+
+# --- Dữ liệu thô dung lượng lớn (chia sẻ qua Drive / GitHub Releases) ---
+data/
+*.osm.pbf
+*.tif
+*.tiff
+*.xls
+*.xlsx
+
+# --- Hạ tầng (khi dùng AWS) ---
+.aws-sam/
+cdk.out/
+.terraform/
+*.tfstate*
+
+# --- IDE / hệ điều hành ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,59 @@
+# Chạy backend + DB:        docker compose up --build
+# Chạy thêm frontend:       docker compose --profile frontend up --build
+# Dừng:                     docker compose down
+# Xoá cả dữ liệu DB:        docker compose down -v
+
+services:
+  db:
+    image: ${DB_IMAGE:-nickblah/pgrouting:16-bookworm-postgis-3.6-pgrouting-4.0.1}
+    container_name: saferoute-db
+    environment:
+      POSTGRES_USER: ${DB_USER:?Hãy tạo file .env từ .env.example}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Hãy tạo file .env từ .env.example}
+      POSTGRES_DB: ${DB_NAME:?Hãy tạo file .env từ .env.example}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Script trong thư mục này chỉ chạy lần đầu khi volume còn trống
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: saferoute-backend
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # Mount mã nguồn để --reload nhận thay đổi ngay
+      - ./backend:/code
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    container_name: saferoute-frontend
+    # Chỉ chạy khi có --profile frontend (bật sau khi đã khởi tạo project Vite)
+    profiles: ["frontend"]
+    environment:
+      VITE_API_URL: http://localhost:${BACKEND_PORT:-8000}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
