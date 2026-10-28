@@ -1,0 +1,3 @@
+# Bat buoc file .sh dung LF, neu khong bash trong container se loi tren Windows
+*.sh text eol=lf
+*.sql text eol=lf

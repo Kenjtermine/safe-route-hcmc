@@ -82,6 +82,55 @@ docker compose down
 
 `<DB_USER>` và `<DB_NAME>` là giá trị trong file `.env` của bạn (mặc định `saferoute`).
 
+### Nạp dữ liệu
+
+**1. Dữ liệu trạm, mưa, triều (tự động)**
+
+4 file CSV trong `data/clean/` được nạp tự động bởi `database/init/02_schema.sql` và `03_load_csv.sql` khi volume DB còn trống. Nếu DB đã tạo từ trước khi có các file này, khởi tạo lại:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+Kiểm tra số dòng (mong đợi `stations` = 16, `rain_10min` = 13938, `rain_daily` = 39702, `tide_daily` = 20453):
+
+```bash
+docker compose exec db psql -U <DB_USER> -d <DB_NAME> -c "SELECT count(*) FROM stations"
+```
+
+**2. Bản đồ đường phố Thủ Đức (chạy tay, 1–3 phút)**
+
+```bash
+docker compose exec db bash /scripts/load_osm.sh
+```
+
+Script tải đường phố khu Thủ Đức từ Overpass (lỗi thì tự chuyển sang mirror `overpass.kumi.systems`) vào `data/osm/thuduc.osm`, nạp vào bảng `ways` / `ways_vertices_pgr` bằng osm2pgrouting, rồi tạo bảng `segment_station` (mỗi đoạn đường → trạm mưa và trạm triều gần nhất). Đã có file OSM thì không tải lại; muốn tải mới thì xoá `data/osm/thuduc.osm`.
+
+Kiểm tra (vào psql: `docker compose exec db psql -U <DB_USER> -d <DB_NAME>`):
+
+```sql
+-- Số đoạn đường (> 0, hiện khoảng 25 nghìn)
+SELECT count(*) FROM ways;
+
+-- Trạm gần nhất của từng đoạn; d_mua_m, d_trieu_m tính bằng mét
+SELECT * FROM segment_station LIMIT 5;
+
+-- Thử tìm đường A* (pgRouting 4.0) giữa 2 đỉnh, cost = thời gian (giây)
+SELECT * FROM pgr_aStar(
+  'SELECT gid AS id, source, target, cost_s AS cost, reverse_cost_s AS reverse_cost,
+          x1, y1, x2, y2 FROM ways',
+  (SELECT id FROM ways_vertices_pgr ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint(106.7558, 10.8448), 4326) LIMIT 1),
+  (SELECT id FROM ways_vertices_pgr ORDER BY the_geom <-> ST_SetSRID(ST_MakePoint(106.79, 10.81), 4326) LIMIT 1),
+  directed => true);
+```
+
+**3. (Tuỳ chọn) Rủi ro giả để code routing/frontend trước**
+
+```bash
+docker compose exec db psql -U <DB_USER> -d <DB_NAME> -f /seed/seed_fake_risk.sql
+```
+
 ### Cấu trúc thư mục
 
 ```
@@ -117,3 +166,5 @@ safe-route-hcmc/
 | `function pgr_version() does not exist`                                                     | Script khởi tạo chưa chạy: `docker compose down -v` rồi chạy lại.                                                                                   |
 | Windows: `bind: An attempt was made to access a socket in a way forbidden...` khi tải image | Chạy `wsl --shutdown`, mở lại Docker Desktop. Nếu vẫn lỗi, mở PowerShell bằng quyền Administrator và chạy `net stop winnat` rồi `net start winnat`. |
 | Sửa code mà backend không tự reload (Windows)                                               | `docker compose restart backend`.                                                                                                                   |
+| Git Bash: `bash: C:/Program Files/Git/scripts/load_osm.sh: No such file or directory`        | Git Bash tự đổi đường dẫn `/scripts/...`. Chạy lệnh trong PowerShell, hoặc thêm `MSYS_NO_PATHCONV=1` phía trước lệnh.                               |
+| `load_osm.sh` báo `$'\r': command not found`                                                | File bị đổi sang CRLF. Mở file trong VS Code, bấm `CRLF` ở góc dưới phải, chọn `LF` rồi lưu.                                                       |

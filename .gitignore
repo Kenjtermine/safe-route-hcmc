@@ -24,7 +24,8 @@ pgdata/
 *.log
 
 # --- Dữ liệu thô dung lượng lớn (chia sẻ qua Drive / GitHub Releases) ---
-data/
+data/raw/
+data/osm/
 *.osm.pbf
 *.tif
 *.tiff
@@ -42,3 +43,6 @@ cdk.out/
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- Code tham khảo (không commit) ---
+scratch/
