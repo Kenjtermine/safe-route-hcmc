@@ -5,7 +5,10 @@
 
 services:
   db:
-    image: ${DB_IMAGE:-nickblah/pgrouting:16-bookworm-postgis-3.6-pgrouting-4.0.1}
+    build:
+      context: ./database
+      args:
+        BASE_IMAGE: ${DB_IMAGE:-nickblah/pgrouting:16-bookworm-postgis-3.6-pgrouting-4.0.1}
     container_name: saferoute-db
     environment:
       POSTGRES_USER: ${DB_USER:?Hãy tạo file .env từ .env.example}
@@ -17,6 +20,10 @@ services:
       - pgdata:/var/lib/postgresql/data
       # Script trong thư mục này chỉ chạy lần đầu khi volume còn trống
       - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./data/clean:/data/clean:ro
+      - ./data/osm:/osm
+      - ./scripts:/scripts:ro
+      - ./database/seed:/seed:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
