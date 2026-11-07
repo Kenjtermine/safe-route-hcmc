@@ -8,9 +8,9 @@ def alert_level(water_level: float, alert_level_1: float, alert_level_2: float, 
 
 def rain_class(rain_mm: float) -> int:
     '''
-    Classifies the rain intensity based on mm per hour.
+    Phân loại lượng mưa thành các mức cảnh báo.
     Returns:
-        int: 0 for light rain, 1 for moderate rain, 2 for heavy rain.
+        int: 0 for mưa nhỏ, 1 for mưa vừa, 2 for mưa lớn.
     '''
     if rain_mm < 20: return 0
     if rain_mm > 20 and rain_mm < 50: return 1
@@ -35,7 +35,7 @@ BASE_DECISION_TABLE = [
     [0.8, 0.9, 1.0],
 ]
 '''Alert floor for minimum flood probability for each alert level alert_floor = table[alert_level][rain_class]
-    This alert floor is created by team so not ensuring that the flood probability is not below a certain threshold for each alert level.
+    Phân bậc alert floor được xây dựng dựa trên dự đoán của team về khả năng ngập lụt dựa trên các mức cảnh báo và cường độ mưa
 '''
 ALERT_FLOOR = [
     [0.0, 0.0, 0.0],
@@ -48,9 +48,9 @@ decay_factor = 0.5
   
 def flood_probability(delta_h: float, rain_mm: float, alert) -> float:
     '''
-    Calculates the flood probability based on delta_h and rain intensity.
+    Tính toán xác suất ngập lụt dựa trên delta_h, lượng mưa và mức cảnh báo.
     Returns:
-        float: Flood probability between 0 and 1.
+        float: Xác suất ngập lụt (từ 0.0 đến 1.0).
     '''
     base = BASE_DECISION_TABLE[delta_h_class(delta_h)][rain_class(rain_mm)]
     floor = ALERT_FLOOR[alert][rain_class(rain_mm)]
