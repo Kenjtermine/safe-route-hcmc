@@ -1,4 +1,4 @@
-"""Routing service: pgRouting (pgr_aStar), cost = time × (1 + β × p)  (tài liệu v0, mục 6.1)."""
+"""Routing service: pgRouting (pgr_aStar), cost = time × (1 + β × p)."""
 from datetime import datetime
 
 from psycopg import sql
@@ -9,6 +9,10 @@ from app.core.db import get_connection
 BETA_SAFEST = 20.0
 SNAP_MAX_M = 500
 LOW_CONF_M = 5000
+
+URBAN_SPEED_CAP_KMH = 40.0  # giả định tốc độ thực tế nội đô thấp hơn so với maxspeed trong OSM
+T_FWD = f"w.cost_s * GREATEST(1.0, COALESCE(w.maxspeed_forward, {URBAN_SPEED_CAP_KMH}) / {URBAN_SPEED_CAP_KMH})"
+T_REV = f"w.reverse_cost_s * GREATEST(1.0, COALESCE(w.maxspeed_backward, {URBAN_SPEED_CAP_KMH}) / {URBAN_SPEED_CAP_KMH})"
 
 LngLat = tuple[float, float]
 
@@ -29,9 +33,9 @@ ORDER BY v.the_geom <-> p.g
 LIMIT 1
 """
 
-PATH_SQL = """
+PATH_SQL = f"""
 SELECT p.path_seq, w.gid, w.name, w.length_m,
-       CASE WHEN p.node = w.source THEN w.cost_s ELSE w.reverse_cost_s END AS time_s,
+       CASE WHEN p.node = w.source THEN {T_FWD} ELSE {T_REV} END AS time_s,
        COALESCE(r.risk, 0) AS risk,
        ST_AsGeoJSON(CASE WHEN p.node = w.source THEN w.the_geom
                          ELSE ST_Reverse(w.the_geom) END)::json AS geom
@@ -67,12 +71,13 @@ def _snap(cur, point: LngLat, label: str) -> int:
 def _edges_sql(conn, beta: float, t: datetime | None) -> str:
     q = sql.SQL("""
         SELECT w.gid AS id, w.source, w.target,
-               w.cost_s         * (1 + {b} * COALESCE(r.risk, 0)) AS cost,
-               w.reverse_cost_s * (1 + {b} * COALESCE(r.risk, 0)) AS reverse_cost,
+               ({tf}) * (1 + {b} * COALESCE(r.risk, 0)) AS cost,
+               ({tr}) * (1 + {b} * COALESCE(r.risk, 0)) AS reverse_cost,
                w.x1, w.y1, w.x2, w.y2
         FROM ways w
         LEFT JOIN road_segment_risk r ON r.segment_id = w.gid AND r.thoi_diem = {t}
-    """).format(b=sql.Literal(float(beta)), t=sql.Literal(t))
+    """).format(b=sql.Literal(float(beta)), t=sql.Literal(t),
+                tf=sql.SQL(T_FWD), tr=sql.SQL(T_REV))
     return q.as_string(conn)
 
 
