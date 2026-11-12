@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { FeatureCollection } from 'geojson';
 import { fetchRoutes } from './api/routes';
+import { fetchRisk } from './api/risk';
+import { MAP_BOUNDS } from './config/map';
 import MapView from './components/map/MapView';
 import Panel from './components/panel/Panel';
 import type { LngLat, Place, RouteKind, RouteResponse } from './types/api';
@@ -11,9 +14,12 @@ export default function App() {
   const [selected, setSelected] = useState<RouteKind>('safest');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [riskData, setRiskData] = useState<FeatureCollection>();
 
   useEffect(() => {
     setError(null);
+    const [[w, s], [e, n]] = MAP_BOUNDS;
+    fetchRisk([w, s, e, n]).then(setRiskData).catch(console.error);
     if (!origin || !destination) { setRoutes(null); setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
@@ -24,7 +30,7 @@ export default function App() {
     return () => { cancelled = true; };
   }, [origin, destination]);
 
-  // Click bản đồ: điền ô xuất phát trước, sau đó đặt/đổi điểm đến
+  // Click trên bản đồ: ô xuất phát trước, sau đó đặt/đổi điểm đến
   const onMapClick = useCallback((lngLat: LngLat) => {
     const p = { label: `Điểm đã chọn (${lngLat[1].toFixed(4)}, ${lngLat[0].toFixed(4)})`, lngLat };
     if (!origin) setOrigin(p); else setDestination(p);
@@ -32,7 +38,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <MapView origin={origin} destination={destination} routes={routes} selected={selected} onMapClick={onMapClick} />
+      <MapView origin={origin} destination={destination} routes={routes} selected={selected} onMapClick={onMapClick} riskData={riskData} />
       <Panel origin={origin} destination={destination} onOrigin={setOrigin} onDestination={setDestination}
         onSwap={() => { setOrigin(destination); setDestination(origin); }}
         routes={routes} loading={loading} error={error} selected={selected} onSelect={setSelected} />

@@ -12,26 +12,35 @@ const KINDS: RouteKind[] = ['fastest', 'safest'];
 const COLOR: Record<RouteKind, string> = { fastest: '#2563eb', safest: '#0d9488' };
 const emptyFC = () => ({ type: 'FeatureCollection' as const, features: [] });
 
+const riskOpacity = (k: number): maplibregl.ExpressionSpecification =>
+    ['interpolate', ['linear'], ['get', 'p'], 0.05, 0.25 * k, 0.5, 0.8 * k, 1, 0.95 * k];
+
 function addLayers(map: maplibregl.Map) {
+    // Chèn dưới lớp chữ để tên đường vẫn đọc được
+    const firstSymbol = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+
     map.addSource('risk', { type: 'geojson', data: emptyFC() });
     map.addLayer({
         id: 'risk-lines', type: 'line', source: 'risk',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-            'line-width': 4,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1.5, 15, 3, 17, 6],
             'line-color': ['interpolate', ['linear'], ['get', 'p'],
-                0, '#22d3ee', 0.25, '#4ade80', 0.5, '#facc15', 0.75, '#f97316', 1, '#7e22ce'],
+                0.05, '#fde68a', 0.3, '#fbbf24', 0.5, '#f97316', 0.75, '#dc2626', 1, '#7f1d1d'],
+            'line-opacity': riskOpacity(1),
         },
-    });
+    }, firstSymbol);
+
     for (const k of KINDS) {
         map.addSource(`route-${k}`, { type: 'geojson', data: emptyFC() });
         const layout = { 'line-cap': 'round', 'line-join': 'round' } as const;
         map.addLayer({
             id: `route-${k}-casing`, type: 'line', source: `route-${k}`, layout,
-            paint: { 'line-width': 10, 'line-color': '#ffffff' }
+            paint: { 'line-width': 11, 'line-color': '#ffffff' },
         });
         map.addLayer({
             id: `route-${k}-line`, type: 'line', source: `route-${k}`, layout,
-            paint: { 'line-width': 5, 'line-color': COLOR[k] }
+            paint: { 'line-width': 6, 'line-color': COLOR[k] },
         });
     }
 }
@@ -100,10 +109,18 @@ export default function MapView({ origin, destination, routes, selected, riskDat
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !ready) return;
+        map.setPaintProperty('risk-lines', 'line-opacity', riskOpacity(routes ? 0.55 : 1));
+    }, [routes, ready]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !ready) return;
         for (const k of KINDS) {
             const on = k === selected;
-            map.setPaintProperty(`route-${k}-line`, 'line-opacity', on ? 1 : 0.5);
-            map.setPaintProperty(`route-${k}-casing`, 'line-opacity', on ? 1 : 0.4);
+            map.setPaintProperty(`route-${k}-line`, 'line-opacity', on ? 1 : 0.55);
+            map.setPaintProperty(`route-${k}-line`, 'line-width', on ? 7 : 4);
+            map.setPaintProperty(`route-${k}-casing`, 'line-opacity', on ? 1 : 0.5);
+            map.setPaintProperty(`route-${k}-casing`, 'line-width', on ? 12 : 7);
         }
         map.moveLayer(`route-${selected}-casing`);
         map.moveLayer(`route-${selected}-line`);
@@ -136,9 +153,9 @@ export default function MapView({ origin, destination, routes, selected, riskDat
                     className={showRisk ? 'is-on' : ''} onClick={() => setShowRisk((v) => !v)}>☰</button>
             </div>
             <div className="legend">
-                <span>Thang màu độ ngập</span>
+                <span>Mức rủi ro ngập</span>
                 <i className="legend__bar" />
-                <div><span>0.0m</span><span>0.2m</span><span>0.5m</span><span>0.8m</span><span>&gt;1.0m</span></div>
+                <div><span>Thấp</span><span>0,25</span><span>0,5</span><span>0,75</span><span>Cao</span></div>
             </div>
         </div>
     );

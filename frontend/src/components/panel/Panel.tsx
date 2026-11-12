@@ -77,28 +77,30 @@ export default function Panel(p: Props) {
             </div>
 
             <h2 className="section">Phương án lưu thông</h2>
-            {p.loading && <p className="hint">Đang tìm tuyến…</p>}
-            {p.error && <p className="hint hint--error">{p.error}</p>}
-            {!p.routes && !p.loading && !p.error && <p className="hint">Chọn điểm đi và điểm đến để xem hai tuyến.</p>}
+            <div className="panel__body">
+                {p.loading && <p className="hint">Đang tìm tuyến…</p>}
+                {p.error && <p className="hint hint--error">{p.error}</p>}
+                {!p.routes && !p.loading && !p.error && <p className="hint">Chọn điểm đi và điểm đến để xem hai tuyến.</p>}
 
-            {p.routes && (
-                <>
-                    <div className="tabs" role="tablist">
-                        {(['safest', 'fastest'] as const).map((k) => (
-                            <button key={k} role="tab" aria-selected={p.selected === k}
-                                className={`tab ${p.selected === k ? 'is-active' : ''}`} data-kind={k}
-                                onClick={() => p.onSelect(k)}>
-                                <span className="tab__row">
-                                    <span className="label">{k === 'safest' ? 'Safest' : 'Fastest'}</span>
-                                    <span className="label">{p.routes![k].distance_km} km</span>
-                                </span>
-                                <span><strong>{p.routes![k].duration_min}</strong> phút</span>
-                            </button>
-                        ))}
-                    </div>
-                    <RouteDetail route={p.routes[p.selected]} />
-                </>
-            )}
+                {p.routes && (
+                    <>
+                        <div className="tabs" role="tablist">
+                            {(['safest', 'fastest'] as const).map((k) => (
+                                <button key={k} role="tab" aria-selected={p.selected === k}
+                                    className={`tab ${p.selected === k ? 'is-active' : ''}`} data-kind={k}
+                                    onClick={() => p.onSelect(k)}>
+                                    <span className="tab__row">
+                                        <span className="label">{k === 'safest' ? 'Safest' : 'Fastest'}</span>
+                                        <span className="label">{p.routes![k].distance_km} km</span>
+                                    </span>
+                                    <span><strong>{p.routes![k].duration_min}</strong> phút</span>
+                                </button>
+                            ))}
+                        </div>
+                        <RouteDetail route={p.routes[p.selected]} />
+                    </>
+                )}
+            </div>
         </aside>
     );
 }
