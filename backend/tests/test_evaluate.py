@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 
 import app.explain.engine as engine
-from scripts import evaluate as ev
+import scripts.evaluate as ev
 from scripts.evaluate import (OD, RouteSegment as S, classify_conditions, criterion_scenario3,
                               evaluate_scenarios, load_reference_csv, pick_times,
                               reference_comparison, render_markdown, route_metrics, summarize,
@@ -27,7 +27,7 @@ def test_route_metrics_and_missing_risk_is_zero():
 
 def test_risky_threshold_is_strictly_greater_and_shared_with_explain():
     assert route_metrics([S(1, 1000, 60)], {1: engine.RISKY_PROB})["risky_km"] == 0.0
-    assert ev.RISKY_PROB is engine.RISKY_PROB
+    assert ev.RISKY_PROB == engine.RISKY_PROB
 
 
 def fake_routes(od, t):
@@ -102,5 +102,6 @@ def test_report_files(tmp_path):
 
 
 def test_empty_scenario_times_do_not_crash():
+    
     assert evaluate_scenarios({1: [], 2: []}, ODS, fake_routes, lambda t: RISK) == []
     assert summarize([]) == {}

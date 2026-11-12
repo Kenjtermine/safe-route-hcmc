@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from risk.compute import (ComputeConfig, RainReading, SegmentInfo, TideReading,
+from app.risk.compute import (ComputeConfig, RainReading, SegmentInfo, TideReading,
                           compute_segment_risks, effective_rain, latest_asof, latest_tide,
                           write_risks)
 
